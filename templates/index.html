@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NanoTable — Your Workspace</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     AUTH SCREEN
+══════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-orb o1"></div>
+  <div class="auth-orb o2"></div>
+  <div class="auth-orb o3"></div>
+
+  <div class="auth-card">
+    <div class="auth-wordmark">
+      <span class="wm-icon">⬡</span>
+      NanoTable
+    </div>
+
+    <h1 id="auth-title">Welcome back</h1>
+    <p class="auth-subtitle" id="auth-subtitle">Sign in to your workspace</p>
+
+    <div class="field-group" id="name-group" style="display:none;">
+      <label class="field-label">Full Name</label>
+      <input type="text" id="auth-name" placeholder="Your name">
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Email</label>
+      <input type="email" id="auth-email" placeholder="you@email.com">
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Password</label>
+      <input type="password" id="auth-password" placeholder="••••••••">
+    </div>
+
+    <button class="btn btn-primary" id="auth-btn" onclick="handleAuth()">Sign In</button>
+
+    <div class="auth-toggle-wrap">
+      <a href="#" onclick="toggleAuthMode()" id="auth-toggle">Don't have an account? Register</a>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     APP SCREEN
+══════════════════════════════════════════ -->
+<div id="app-screen" style="display:none;">
+
+  <!-- ── SIDEBAR ── -->
+  <div class="sidebar" id="sidebar">
+
+    <div class="sidebar-header">
+      <div class="wordmark sidebar-text">
+        <span class="wordmark-icon">⬡</span>
+        NanoTable
+      </div>
+      <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="Collapse sidebar">⇄</button>
+    </div>
+
+    <div class="user-pill">
+      <div class="user-avatar av-violet" id="user-avatar">A</div>
+      <div class="user-info sidebar-text">
+        <div id="user-display">User</div>
+        <div class="user-role">workspace member</div>
+      </div>
+    </div>
+
+    <div class="sidebar-search-wrap">
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="sidebar-search" placeholder="Search tables…" oninput="filterSidebar(this.value)">
+      </div>
+    </div>
+
+    <div class="sidebar-section-label">Pinned</div>
+    <div class="sidebar-tables" id="pinned-tables"></div>
+
+    <div class="sidebar-section-label">Private</div>
+    <div class="sidebar-tables" id="sidebar-tables"></div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-btns">
+        <button class="btn btn-new-table" onclick="createNewTable()">＋ &nbsp;New Table</button>
+        <button class="btn btn-logout" onclick="logout()">↩ &nbsp;Logout</button>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+
+  <!-- ── MAIN CONTENT ── -->
+  <div class="main-content">
+
+    <!-- Empty state -->
+    <div id="empty-view" style="display:flex;">
+      <div class="empty-graphic">◫</div>
+      <h1>Nothing selected</h1>
+      <p>Pick a table from the sidebar, or create a new one</p>
+      <button class="btn btn-ghost" style="margin-top:10px;" onclick="createNewTable()">＋ Create your first table</button>
+    </div>
+
+    <!-- Table view -->
+    <div id="table-view">
+
+      <!-- Top bar: title + actions -->
+      <div class="table-topbar">
+        <div class="table-header-row">
+          <div class="table-title-wrap">
+            <span class="table-emoji-display" id="view-table-emoji" onclick="openEmojiPicker()" title="Change icon">📄</span>
+            <h1 id="view-table-name" contenteditable="true" onblur="renameTable(this.innerText)" spellcheck="false">Table</h1>
+          </div>
+          <div class="table-header-actions">
+            <button class="btn btn-ghost btn-icon" onclick="exportCSV()" title="Export to CSV">⬇</button>
+            <button class="btn btn-ghost btn-icon" onclick="refreshTable()" title="Refresh">↺</button>
+          </div>
+        </div>
+
+        <!-- Stats bar -->
+        <div class="stats-bar">
+          <div class="stat-chip">rows <span class="stat-val" id="stat-rows">0</span></div>
+          <div class="stat-chip">cols <span class="stat-val" id="stat-cols">0</span></div>
+          <div class="stat-chip">updated <span class="stat-val" id="stat-updated">—</span></div>
+        </div>
+      </div>
+
+      <!-- View tabs: Data / Analytics -->
+      <div class="view-tabs">
+        <div class="view-tab active" id="tab-data"      onclick="switchView('data')">Data</div>
+        <div class="view-tab"        id="tab-analytics" onclick="switchView('analytics')">Analytics</div>
+      </div>
+
+      <!-- ── DATA SUB-VIEW ── -->
+      <div id="data-subview" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+
+        <!-- Toolbar: add column + new row -->
+        <div class="toolbar">
+          <input type="text"  id="new-col-name" placeholder="Column name">
+          <select id="new-col-type">
+            <option value="TEXT">Text</option>
+            <option value="NUMBER">Number</option>
+            <option value="BOOLEAN">Boolean</option>
+            <option value="DATE">Date</option>
+          </select>
+          <button class="btn btn-ghost" onclick="addColumn()">+ Column</button>
+          <div class="toolbar-sep"></div>
+          <button class="btn btn-success" onclick="openAddRowModal()">+ New Row</button>
+        </div>
+
+        <!-- Filter row -->
+        <div class="filter-row">
+          <span class="filter-label">Filter</span>
+          <select id="filter-col"><option value="">— column —</option></select>
+          <select id="filter-op">
+            <option value="contains">contains</option>
+            <option value="=">=</option>
+            <option value="!=">≠</option>
+            <option value=">">&gt;</option>
+            <option value="<">&lt;</option>
+            <option value=">=">&ge;</option>
+            <option value="<=">&le;</option>
+          </select>
+          <input  type="text" id="filter-val" placeholder="value…">
+          <button class="btn btn-ghost" style="font-size:11px; height:28px; padding:0 12px;" onclick="applyFilter()">Apply</button>
+          <button class="btn btn-ghost" style="font-size:11px; height:28px; padding:0 12px;" onclick="clearFilter()">Clear</button>
+
+          <div class="filter-active-badge" id="filter-badge">
+            <span id="filter-badge-text"></span>
+            <span class="badge-clear" onclick="clearFilter()">×</span>
+          </div>
+
+          <div class="sort-indicator" id="sort-indicator">
+            <span id="sort-indicator-text"></span>
+            <span class="badge-clear" onclick="clearSort()">×</span>
+          </div>
+        </div>
+
+        <!-- The actual table -->
+        <div class="table-scroll">
+          <table id="data-table">
+            <thead id="data-head"></thead>
+            <tbody id="data-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Aggregation summary bar (below table) -->
+        <div class="agg-bar" id="agg-bar"></div>
+
+      </div><!-- /data-subview -->
+
+      <!-- ── ANALYTICS SUB-VIEW ── -->
+      <div id="analytics-subview" style="display:none;">
+
+          <!-- Column pickers for override -->
+          <div class="analytics-controls">
+            <span class="filter-label">Date column</span>
+            <select id="analytics-date-col">
+              <option value="">— auto-detect —</option>
+            </select>
+            <span class="filter-label">Value column</span>
+            <select id="analytics-value-col">
+              <option value="">— auto-detect —</option>
+            </select>
+            <button class="btn btn-accent" style="height:32px; font-size:12px;" onclick="buildAnalytics()">Generate Report</button>
+          </div>
+
+          <!-- Summary cards -->
+          <div class="analytics-section">
+            <div class="analytics-section-title">Summary</div>
+            <div class="summary-cards" id="summary-cards">
+              <!-- injected by JS -->
+            </div>
+          </div>
+
+          <!-- Monthly bar chart -->
+          <div class="analytics-section">
+            <div class="analytics-section-title">Monthly Totals</div>
+            <div class="monthly-chart-wrap">
+              <div class="chart-title" id="chart-title">Configure columns above to generate chart</div>
+              <div class="monthly-bars" id="monthly-bars">
+                <!-- injected by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Monthly breakdown table -->
+          <div class="analytics-section">
+            <div class="analytics-section-title">Month-by-Month Breakdown</div>
+            <div class="monthly-table-wrap">
+              <table>
+                <thead id="monthly-thead">
+                  <tr>
+                    <th>Month</th>
+                    <th>Total</th>
+                    <th>Avg</th>
+                    <th>Count</th>
+                    <th>Min</th>
+                    <th>Max</th>
+                  </tr>
+                </thead>
+                <tbody id="monthly-tbody">
+                  <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Select columns and click Generate Report</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+      </div><!-- /analytics-subview -->
+
+    </div><!-- /table-view -->
+
+  </div><!-- /main-content -->
+
+</div><!-- /app-screen -->
+
+<!-- ══════════════════════════════════════════
+     CREATE TABLE MODAL
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="create-table-modal">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <h2>New Table</h2>
+      <p>Give your table a name and choose an icon</p>
+    </div>
+    <div class="modal-divider"></div>
+    <div class="modal-field">
+      <label class="field-label">Table Name</label>
+      <input type="text" id="new-table-name" placeholder="e.g. Expense Tracker, Reading Log..."
+             onkeydown="if(event.key==='Enter') submitCreateTable()">
+    </div>
+    <div class="modal-field">
+      <label class="field-label">Icon</label>
+      <div id="create-table-emoji-row" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('create-table-modal')">Cancel</button>
+      <button class="btn btn-primary" style="width:auto;" onclick="submitCreateTable()">Create Table</button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+<!-- ══════════════════════════════════════════
+     ADD ROW MODAL
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="row-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>New Row</h2>
+      <p>Fill in the values for each column</p>
+    </div>
+    <div class="modal-divider"></div>
+    <div id="modal-fields"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('row-modal')">Cancel</button>
+      <button class="btn btn-primary" style="width:auto;" onclick="submitRow()">Insert Row</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     EMOJI PICKER MODAL
+══════════════════════════════════════════ -->
+<div class="modal-overlay" id="emoji-modal">
+  <div class="modal" style="width:360px;">
+    <div class="modal-header">
+      <h2>Choose an icon</h2>
+      <p>Pick an emoji for this table</p>
+    </div>
+    <div class="modal-divider"></div>
+    <div class="emoji-grid" id="emoji-grid"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('emoji-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     TOAST CONTAINER
+══════════════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
